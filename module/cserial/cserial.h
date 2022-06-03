@@ -6,13 +6,12 @@
 #include "../common/header.h"
 #include <unistd.h>
 #include "../socket/socket.h"
-#include "../operation/operation.h"
 #include <atomic>
 #define MAX_AGE 3			// 定义心跳包时间
 #define MAX_SN_CNT 256		// sn号数量，表示0 - MAX_SN_CNT - 1
 #define MAX_RECONNECT_CNT 3 // 定义最大重连次数
 #define MAX_RESEND_CNT 3 // 定义最大重发次数
-#define INTERVAL 10			// 定义时间区间长度
+#define INTERVAL 10			// 定义时间区间长度 s
 #define MAX_LOSS_CNT 10		// 区间内最大丢包数量
 
 class CSerial
@@ -52,6 +51,8 @@ public:
 
 	void cwrite_OP13_Frame(unsigned char dst, unsigned char src, unsigned char* data, unsigned char length);
 
+	void cwrite_op14_frame();
+
 	void checkHeart(); // 检测心跳函数,应由单独线程执行
 
 	static void enumerate_ports();
@@ -66,6 +67,18 @@ public:
 	char status_type_b0b1 = 0x00; // 织片转台
 	char status_type_b2 = 0x00; // 位置传感器对齐
 	char status_type_b3 = 0x00; // 机台自动运行
+	bool resetStatus(); // 还原串口状态
+
+
+	string dec2hex(int i) //将int转成16进制字符串
+	{
+		stringstream ioss; //定义字符串流
+		string s_temp; //存放转化后字符
+		ioss << setiosflags(ios::uppercase) << hex << i; //以十六制(大写)形式输出
+		//ioss << resetiosflags(ios::uppercase) << hex << i; //以十六制(小写)形式输出//取消大写的设置
+		ioss >> s_temp;
+		return s_temp;
+	}
 
 private:
 	unsigned char PC = 0x10, MCU = 0x12; // pc和mcu的地址
@@ -134,4 +147,7 @@ private:
 	deque<time_t> interval_queue;
 
 	bool addAndJdugeInterval(time_t cur); // 判断是否超过了区间内允许的最大丢帧数量
+
+	bool runFlag = true; // run flag
+
 };

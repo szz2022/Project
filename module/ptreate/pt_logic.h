@@ -42,8 +42,13 @@ private:
 
 	inner_state mk_table_state = S_WAIT;
 
+	// 自校准数据
 	pt_calibration calibration_data;
+	
+	// 偏移表数据
 	pt_offset_table offset_table_data;
+
+	// 前后针排数据
 	pt_needle_data front_needle_data;
 	pt_needle_data back_needle_data;
 
@@ -233,4 +238,6 @@ public:
 	 * @param u_data 串口Machine Head XY数据
 	 */
 	void auto_dect(cv::Mat &src, machine_head_xy u_data);
+
+	void test_save_with_position(cv::Mat &src, machine_head_xy u_data);
 };

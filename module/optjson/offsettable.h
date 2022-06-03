@@ -24,6 +24,6 @@ public:
     // offsettable::init();
     // offsettable::set_calibration("A", -9.255963134931784e61, -858993460);
     static void set_calibration(const char *light_path, float angle_num, int midline_num);
-    // table的数据结构没找到
-    // static void set_table();
+
+    static void set_table();
 };

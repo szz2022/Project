@@ -59,7 +59,7 @@ void PtAllocator::run()
             shuttle_pos_queue->Pop(&yarn_pos, false);
             std::cout << "获取到[沙嘴坐标]"
                       << "时间戳[" << yarn_pos.timestamp << "]" << std::endl;
-            hardware_decode_yarn(yarn_pos);
+            set_shuttle_pos(yarn_pos);
         }
     }
     A_ex.join();
@@ -120,15 +120,13 @@ void PtAllocator::software_decode_yarn()
                 }
             }
         }
-        template_max_row++;
+        row++;
     }
-    LOG_S("成功软件解析织物模板，最大织物行数:" + std::to_string(template_max_row), LOGGER_INFO);
+    // Resize yarn position vector
+    yarn_position_vector = std::vector<std::vector<int>>(row, std::vector<int>(8, NEEDLE_GRID_COUNT));
+    LOG_S("成功软件解析织物模板，最大织物行数:" + std::to_string(row), LOGGER_INFO);
 }
 
-void PtAllocator::hardware_decode_yarn(shuttle_pos pos_data)
-{
-    // pos_data.pos;
-}
 
 int PtAllocator::get_row()
 {
@@ -148,4 +146,75 @@ int PtAllocator::get_offset()
 void PtAllocator::set_offset(int shift)
 {
     offset.store(shift);
+}
+
+std::vector<int> PtAllocator::get_shuttle_pos(int row)
+{
+    // C++14下只有shared_timed_mutex具体效率区别与C++17的shared_mutex待测试
+    std::shared_lock<std::shared_timed_mutex> r_lock(shuttle_rw_mutex);
+    std::vector<int> res;
+    for (int i = 0; i < SHUTTLE_POS_CNT; i++)
+        if (yarn_position_vector[row][i] < NEEDLE_GRID_COUNT && yarn_position_vector[row][i] > 0)
+            res.emplace_back(yarn_position_vector[row][i]);
+    return res;
+}
+
+void PtAllocator::set_shuttle_pos(shuttle_pos pos_data)
+{
+    std::unique_lock<std::shared_timed_mutex> w_lock(shuttle_rw_mutex);
+
+    // 记录当前状态，查找状态变化
+    unsigned char sys0_state_change = static_cast<unsigned char>(pos_data.colNo) ^ sys0_shuttle_state;
+    unsigned char sys1_state_change = static_cast<unsigned char>(pos_data.colNo >> 8) ^ sys1_shuttle_state;
+    sys0_shuttle_state = static_cast<unsigned char>(pos_data.colNo);
+    sys1_shuttle_state = static_cast<unsigned char>(pos_data.colNo >> 8);
+
+    // 
+    for (int i = 0; i < SHUTTLE_POS_CNT; i++)
+    {
+        // S0系统的i列沙嘴发生状态改变
+        if (sys0_state_change & 1)
+        {
+            // 拿起
+            if (sys0_shuttle_state >> i & 1)
+            {
+                // auto itr = offsettable::d["A"]["table"].FindMember(std::to_string(get_dpos(pos_data)).c_str());
+                // // 未找到当前位置(说明在有效区域外[0, 629])
+                // if (itr == offsettable::d["A"]["table"].MemberEnd())
+                //     // do something
+                //     std::cout << "A" << std::endl;
+                // else
+                //     int ap_first_ycor = offsettable::offsettable::d[light_path]["table"][std::to_string(get_dpos(u_data)).c_str()].GetArray()
+                // // 对应位置的第一个坐标
+                // int ap_first_ycor = 100;
+                // int ap_first_index = 10;
+
+                // int offset_cnt = (S0_AP_OFFSET - ap_first_ycor) / NEEDLE_GRID_WIDTH;
+
+                // int real_index = ap_first_index + offset_cnt;
+                
+
+                std::cout << "S0 " << to_string(i) << "号位置状态改变:拿起" << std::endl;
+
+            }
+            // 放下
+            else
+                std::cout << "S0 " << to_string(i) << "号位置状态改变:放下" << std::endl;
+        }
+        // S1系统的i列沙嘴发生状态改变
+        if (sys1_state_change & 1)
+        {
+            // 拿起
+            if (sys1_shuttle_state >> i & 1)
+                std::cout << "S1 " << to_string(i) << "号位置状态改变:拿起" << std::endl;
+            // 放下
+            else
+                std::cout << "S1 " << to_string(i) << "号位置状态改变:放下" << std::endl;
+        }
+        sys0_state_change >>= 1;
+        sys1_state_change >>= 1;
+    }
+
+    short x = pos_data.x;
+    short y = pos_data.y;
 }

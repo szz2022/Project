@@ -32,11 +32,12 @@ public:
         float exposure_time,
         float gain,
         unsigned int cache_capacity);
-    
+    void init(int device_name,float exposure_time){};
     //释放相机资源
     void release();
     void run();
-
+    void reset_frame_number(){};
+    void detect_device_online(){};
     //执行相机开始取流，并注册回调函数
     void execute();
 

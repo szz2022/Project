@@ -1,15 +1,16 @@
 #ifndef OPERATION_H
 #define OPERATION_H
-
 // #include <sys/io.h>
 #include "../msgqueue/mqtest.h"
 #include "../common/header.h"
 #include "../common/utils.h"
 #include "../optjson/templatejson.h"
+#include "../optjson/offsettable.h"
 #include "../logger/logger.h"
 #include "ThreadPool.h"
 #include "../json/json.h"
-
+#include "../cserial/cserial.h"
+#include "../camera/camera.h"
 //声明状态机的各个状态
 enum StateLevel
 {
@@ -44,8 +45,39 @@ enum EventNumber
 //定义一个全局状态
 extern StateLevel level;
 
-//定义一个全局计数变量
-extern int sums;
+//定义一个全局计数变量calibrate_sum
+extern int calibrate_sum;
+extern bool calibration_light_a;
+extern bool calibration_light_b;
+extern bool calibratiom_light_c;
+//定义三个全局calibrate结构体
+extern struct pt_calibration calibration_a;
+extern struct pt_calibration calibration_b;
+extern struct pt_calibration calibration_c;
+
+//定义一个全局计数变量offset_table_sum
+extern int offset_table_sum;
+extern bool offset_table_light_a;
+extern bool offset_table_light_b;
+extern bool offset_table_light_c;
+//定义三个全局calibrate结构体
+extern struct pt_offset_table offset_table_a;
+extern struct pt_offset_table offset_table_b;
+extern struct pt_offset_table offset_table_c;
+
+//改变light_path对应的bool值
+void change_calibrate_light_path(char light_path, pt_calibration cal);
+//还原bool值
+void reset_calibrate_light_path();
+// write_calibrate_json() 写到json文件
+void write_calibrate_json();
+
+//改变light_path对应的bool值
+void change_offset_table_light_path(char light_path, pt_offset_table cal);
+//还原bool值
+void reset_offset_table_light_path();
+// write_offset_table_json() 写到json文件
+void write_offset_table_json();
 
 
 // 定义三个全局自动检测光路成功标志
@@ -53,8 +85,7 @@ extern bool auto_dect_a;
 extern bool auto_dect_b;
 extern bool auto_dect_c;
 //记录自动检测出错光路
-extern std::string auto_dect_err_name; 
-
+extern string auto_dect_err_name;
 
 // 定义一个全局自动检测异常计数器
 extern int auto_dect_err_cnt;
@@ -66,6 +97,9 @@ extern ConcurrentQueue<pt_auto_detect> *auto_detect_queue;
 
 // 预处理执行器->神经网络 队列
 extern ConcurrentQueue<pt_needle_data> *needle_queue;
+//校准消息队列 offsettable队列
+extern ConcurrentQueue<pt_calibration> *calibrate_queue;
+extern ConcurrentQueue<pt_offset_table> *offset_table_queue;
 
 // 神经网络->业务逻辑 队列
 extern ConcurrentQueue<nn_needle_ans_data> *needle_ans_queue;
@@ -100,6 +134,9 @@ extern ConcurrentQueue<module_except_code> *except_code_queue;
 //上锁
 void set_level(StateLevel prev_level, StateLevel next_level);
 
-void handle();
+void handle(CSerial &cserial,Camera* camera0,Camera* camera1,Camera* camera2);
 
+void init_queue();
+
+void reset_camera_and_cserial(CSerial& cserial,Camera* camera0,Camera* camera1,Camera* camera2);
 #endif

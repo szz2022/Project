@@ -15,7 +15,7 @@
 #include "../optjson/offsettable.h"
 #include "../logger/logger.h"
 
-#define LOG_S(...)    Logger::get_instance().log_plus((const std::string)(FILENAME(__FILE__)), (const std::string)(__FUNCTION__), (int)(__LINE__), __VA_ARGS__)
+#define LOG_S(...) Logger::get_instance().log_plus((const std::string)(FILENAME(__FILE__)), (const std::string)(__FUNCTION__), (int)(__LINE__), __VA_ARGS__)
 
 PtLogic::PtLogic(int l_p, std::shared_ptr<PtAllocator> ptr_a)
 {
@@ -36,7 +36,14 @@ void PtLogic::run()
 		// 队列内部实现了阻塞可以直接调用pop来获取数据
 		// 具体线程与队列的映射
 		pt_queue_set[light_path]->Pop(&gdata);
-		LOG_S(LIGHT_PATH_MAPPING[light_path] + "光路获取到图像帧宽:" + std::to_string(gdata.c_data.cols) + " 高:" + std::to_string(gdata.c_data.rows) + " and 串口帧:" + std::to_string(gdata.u_data.frame_num) + "当前状态:" + std::to_string((int)level), LOGGER_INFO);
+		LOG_S(LIGHT_PATH_MAPPING[light_path] + "光路获取到图像帧宽:" + std::to_string(gdata.c_data.cols) +
+				  " 高:" + std::to_string(gdata.c_data.rows) +
+				  " and 串口帧:" + std::to_string(gdata.u_data.frame_num - 1) +
+				  "串口行号:" + std::to_string(gdata.u_data.x) +
+				  "串口列号:" + std::to_string(gdata.u_data.y) +
+				  "串口方向：" + std::to_string(gdata.u_data.direction) +
+				  "当前状态:" + STATE_MAPPING[(int)level],
+			  LOGGER_INFO);
 
 		row_monitor(gdata.u_data);
 
@@ -44,6 +51,7 @@ void PtLogic::run()
 		{
 		case IDLE:
 			// 预留状态，具体工作待填充
+			test_save_with_position(gdata.c_data, gdata.u_data);
 			break;
 
 		case AUTO_CALIBRATE:
@@ -60,6 +68,10 @@ void PtLogic::run()
 
 		case AUTO_DETECT:
 			auto_dect(gdata.c_data, gdata.u_data);
+			break;
+
+		case ERR_MODE:
+			// 预留状态，具体工作待填充
 			break;
 
 		default:
@@ -177,7 +189,7 @@ void PtLogic::row_monitor(machine_head_xy u_data)
 		}
 		pre_pos.col = cur_pos.col;
 
-		LOG_S(LIGHT_PATH_MAPPING[light_path] + "开始处理"+ std::to_string(row_count) + "行" + std::to_string(u_data.y) + "列数据" +  + "光路预处理", LOGGER_INFO);
+		LOG_S(LIGHT_PATH_MAPPING[light_path] + "开始处理" + std::to_string(row_count) + "行" + std::to_string(u_data.y) + "列数据" + +"光路预处理", LOGGER_INFO);
 
 	} while (false);
 }
@@ -297,6 +309,7 @@ void PtLogic::make_offset_table(cv::Mat &src, machine_head_xy u_data)
 	case S_SEND:
 	{
 		// 向业务逻辑线程发送最终结果type->offset_table_data
+		offset_table_data.light_path = light_path + 'A';
 		offset_table_queue->Push(offset_table_data);
 		mk_table_state = S_IDLE;
 		break;
@@ -383,4 +396,17 @@ void PtLogic::auto_dect(cv::Mat &src, machine_head_xy u_data)
 		// 向业务逻辑线程发送最终结果type->bool
 		auto_detect_queue->Push(pt_auto_detect(light_path + 'A', res));
 	}
+}
+
+void PtLogic::test_save_with_position(cv::Mat &src, machine_head_xy u_data)
+{
+	auto start = util::get_cur_time();
+	std::string path_str = "../data/" + std::to_string(light_path) + "/" + std::to_string(u_data.y);
+	if (!util::exists(path_str))
+	{
+		util::mkdirs(path_str);
+	}
+	cv::imwrite(path_str + "/" + std::to_string(u_data.x) + ".bmp", src);
+	auto end = util::get_cur_time();
+	LOG_S("成功写入图片:行号:" + std::to_string(u_data.x) + " 列号:" + std::to_string(u_data.y) + " 耗时:" + std::to_string((chrono::duration_cast<chrono::microseconds>(end - start).count()) / 1000000.0), LOGGER_INFO);
 }

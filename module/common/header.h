@@ -11,6 +11,7 @@
 #include <future>
 #include <atomic>
 #include <mutex>
+#include <shared_mutex>
 #include <condition_variable>
 
 #include <vector>
@@ -112,6 +113,15 @@ constexpr int VALID_REGION_COL_END = 550;
 // LATERAL_Y_POS
 // 后针排的零点(后针排与前针排对齐时候的MCU上报值)偏移(单位:列号)
 constexpr int BACK_GRID_ZERO_OFFSET = 10;
+
+// 沙嘴导轨数量
+constexpr int SHUTTLE_POS_CNT = 8;
+
+// S0偏移A光路的像素距离
+constexpr int S0_AP_OFFSET = 200;
+
+// S1偏移B光路的像素距离
+constexpr int S1_BP_OFFSET = 200;
 /*************************************** ERR CODE **************************************/
 #define PT_OK 0x00000000
 // 后针排上报的y字段与真实图像的pix之间的比例系数(可能为float，暂定为int)
@@ -157,12 +167,16 @@ constexpr int LIGHT_PATH_COUNT = 3;
 // 有效光路开关
 constexpr std::array<int, 1> VALID_LIGHT_PATH{2};
 
+// 状态映射表
+const std::vector<std::string> STATE_MAPPING{"IDLE", "AUTO_CALIBRATE", "GENTABLE", "VISDECT", "AUTO_DETECT", "ERR_MODE"};
+
 // 光路映射表
 const std::vector<std::string> LIGHT_PATH_MAPPING{"A", "B", "C"};
 
 // 有效区域映射表
 const std::vector<std::string> VALID_REGION_MAPPING{"front_valid", "back_valid"};
 
+// 前后针排映射表
 const std::vector<std::string> NEEDLE_POS{"front_needle", "back_needle"};
 
 // 单光路的Window
@@ -242,7 +256,7 @@ constexpr unsigned char M2O_UD_STATUS_NEW_PIECE = 0x00;
 constexpr unsigned char M2O_UD_STATUS_MCU_ALIGN_NK = 0x01;
 constexpr unsigned char M2O_UD_STATUS_MCU_ALIGN_ING = 0x02;
 constexpr unsigned char M2O_UD_STATUS_MCU_ALIGN_OK = 0x03;
-
+constexpr unsigned char M20_UD_OP_14 = 0x15;
 // UD XY CMD by lq
 constexpr unsigned char M2O_UD_XY = 0x05; // CMD坐标信息汇报指令
 
@@ -373,7 +387,7 @@ struct machine_head_xy
         this->frame_num = frame_num;
         this->direction = direction;
         this->x = x;
-        this->y = x;
+        this->y = y;
         this->timestamp = timestamp;
     }
 };
@@ -404,15 +418,17 @@ struct shuttle_pos
     unsigned char cmd;
     unsigned short colNo;     // 参照文档进行解析
     unsigned char direction;  // 梭子运动方向(0 or 1)
-    short pos;                // 梭子列坐标
+    short x;                  // 梭子行坐标
+    short y;                  // 梭子列坐标
     unsigned short timestamp; // 时间戳
     shuttle_pos() {}
-    shuttle_pos(unsigned char cmd, unsigned short colNo, unsigned char direction, unsigned short pos, unsigned short timestamp)
+    shuttle_pos(unsigned char cmd, unsigned short colNo, unsigned char direction, unsigned short x, unsigned short y, unsigned short timestamp)
     {
         this->cmd = cmd;
         this->colNo = colNo;
         this->direction = direction;
-        this->pos = pos;
+        this->x = x;
+        this->y = y;
         this->timestamp = timestamp;
     }
 };
@@ -520,6 +536,7 @@ enum serial_port_status
     TAIL,
 };
 
+
 enum module_except_code
 {
     CAM_DEVICE_NOT_FOUND,
@@ -531,5 +548,7 @@ enum module_except_code
     EXCEPTION_WARNING,
     NORMAL_CODE,
     VISDECT_EXCEPTION,
+    SERIAL_CONNECT_FAIL, // 串口连接失败
+    QUEUE_LENGTH_MATCHING_FAILURED //校验模块队列长度匹配失败
 };
 /***************************************************************************************/

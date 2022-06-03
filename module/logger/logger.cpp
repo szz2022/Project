@@ -13,27 +13,30 @@ int Logger::init()
     //1.首先先从配置文件中加载我们需要的参数来进行初始化
     
     //2.一次性创建所有的logger
-    try 
-    {
-        // 可以使用std::make_shared来分配对象
-        rotating_logger = spdlog::rotating_logger_mt("rotating_logger", config.run_log_filepath , 
-                                                      config.roll_size, config.reserve_count); 
+    // try 
+    // {
+    //     // 可以使用std::make_shared来分配对象
+    //     rotating_logger = spdlog::rotating_logger_mt("rotating_logger", config.run_log_filepath , 
+    //                                                   config.roll_size, config.reserve_count); 
         
-        //遇到err日志立马刷盘
-        rotating_logger->flush_on(spdlog::level::err);
+    //     //遇到err日志立马刷盘
+    //     rotating_logger->flush_on(spdlog::level::err);
         
-        // spdlog::register_logger(rotating_logger);
-    }
-    catch (const spdlog::spdlog_ex& ex)
-    {
-        std::cout << "Rotating Logger initialization failed: " << ex.what() << std::endl;
-    }
+    //     // spdlog::register_logger(rotating_logger);
+    // }
+    // catch (const spdlog::spdlog_ex& ex)
+    // {
+    //     std::cout << "Rotating Logger initialization failed: " << ex.what() << std::endl;
+    // }
 
     try 
     {
         spdlog::init_thread_pool(config.async_thread_pool_items_size,config.async_thread_pool_thread_size);
-        async_rotating_logger = spdlog::rotating_logger_mt<spdlog::async_factory>("async_rotating_logger", config.run_log_filepath , 
-                                                      config.roll_size, config.reserve_count); 
+        // async_rotating_logger = spdlog::rotating_logger_mt<spdlog::async_factory>("async_rotating_logger", config.run_log_filepath , 
+        //                                               config.roll_size, config.reserve_count); 
+
+        async_rotating_logger = spdlog::daily_logger_mt<spdlog::async_factory>("async_rotating_logger", config.run_log_filepath , 
+                                                      config.rotation_hour, config.rotation_minute); 
         // spdlog::register_logger(async_rotating_logger);
     }
     catch (const spdlog::spdlog_ex& ex)

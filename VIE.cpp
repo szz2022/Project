@@ -25,6 +25,7 @@ void testfunc(CSerial& cserial)
     cserial.cwrite_mcu_state(0xffff); // 测试status
 }
 
+
 int main()
 {    
     // time_t c1;
@@ -38,6 +39,12 @@ int main()
     // time_t c2;
     // cout << c1 << c2 << endl;
     // while(1);
+    // 测试串口代码,没有连接设备不要执行
+    // CSerial cserial;
+    // cserial.run();
+    // cserial.cwrite_mcu_state(0x02, 0xffff); // 测试status
+
+    
    //启动时调用
     // Cserial cserial();
     // cserial.cwrite_OP10_Frame(2, 0x10, 0x12, 0x0f, 4);
@@ -77,21 +84,6 @@ int main()
     // while (1);
     // std::cout << "except_code_queue address：" << &except_code_queue << std::endl;
     // std::cout << "event_number_queue address：" << &event_number_queue << std::endl;
-    
-    // 创建相机
-    Camera* camera0 = CameraFactory::getCamera(DAHENG_CAMERA,1);
-    Camera* camera1 = CameraFactory::getCamera(DAHENG_CAMERA,2);
-    Camera* camera2 = CameraFactory::getCamera(DAHENG_CAMERA,3);
-
-    // //一定要先启动相机在开
-    ThreadPool::get_instance(10).init();
-    ThreadPool::get_instance(10).submit(handle);
-    ThreadPool::get_instance(10).submit(validity::check_validity);
-
-    CSerial cserial;
-    ThreadPool::get_instance(10).submit(testfunc, ref(cserial));
-    ThreadPool::get_instance(10).submit(mem_fn(&CSerial::checkHeart), &cserial);
-    ThreadPool::get_instance(10).submit(mem_fn(&CSerial::run), &cserial);
 
     // 加载衣物模板
     templatejson::init();
@@ -101,6 +93,25 @@ int main()
     // 启动预处理
     std::shared_ptr<PtAllocator> al = std::make_shared<PtAllocator>();
     std::thread th(&PtAllocator::run, al);
+
+    // 创建相机
+    Camera* camera0 = CameraFactory::getCamera(DAHENG_CAMERA,1);
+    Camera* camera1 = CameraFactory::getCamera(DAHENG_CAMERA,2);
+    Camera* camera2 = CameraFactory::getCamera(DAHENG_CAMERA,3);
+
+    CSerial cserial;
+    ThreadPool::get_instance(10).init();
+    ThreadPool::get_instance(10).submit(mem_fn(&CSerial::checkHeart), &cserial);
+    ThreadPool::get_instance(10).submit(mem_fn(&CSerial::run), &cserial);
+    // ThreadPool::get_instance(10).submit(testfunc, ref(cserial));
+
+    //业务线程
+    // ThreadPool::get_instance(10).submit(handle,ref(cserial),camera0,camera1,camera2);
+
+    //比对逻辑
+    ThreadPool::get_instance(10).submit(validity::check_validity);
+
+
     
     // LOG("test hello", LOGGER_ALARM);
     // result_of_autodect_queue->Push(false);
@@ -118,7 +129,11 @@ int main()
     // ThreadPool pool(3);
     // pool.init();
     // pool.submit(handle);
-    while (1);
+    while (1){
+        // camera0->detect_device_online();
+        // camera1->detect_device_online();
+        // camera2->detect_device_online();
+    }
 
     // Camera* camera1 = CameraFactory::getCamera(HAIKANG_CAMERA,1);
     // camera0->g_bIsGetImage = true;

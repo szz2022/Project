@@ -55,7 +55,7 @@ void __stdcall HikCamera::ImageCallBackEx(unsigned char * pData, MV_FRAME_OUT_IN
         }
         std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());//获取当前时间点
         std::time_t timestamp_host = tp.time_since_epoch().count(); //计算距离1970-1-1,00:00的时间长度
-        std::string logInfo="系统时间戳 = "+std::to_string(timestamp_host)+", 出图时间 = "+std::to_string(diff)+"\n";
+        string logInfo="系统时间戳 = "+to_string(timestamp_host)+", 出图时间 = "+to_string(diff)+"\n";
         LOG_PLUS(logInfo, LOGGER_INFO);
         
         //1.超过变成1
